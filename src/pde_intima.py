@@ -1,3 +1,4 @@
+# NEW: split from original script into a module
 
 import params as p
 
@@ -8,7 +9,8 @@ def step_intima_ldl_and_reactions(c_LDL_i, c_oxLDL_i, M, F, ci_n, cox_n, M_n, dt
 
             laplacian = (ci_n[j,i+1] - 2 * ci_n[j,i] + ci_n[j, i-1]) / hx**2 + (ci_n[j+1, i] - 2 * ci_n[j, i] + ci_n[j-1, i]) / hy2**2
 
-            c_LDL_i[j, i] + dt * (p.Di * laplacian - p.r_ox * ci_n[j, i])
+            # NEW: bugfix (missing assignment in original) — update c_LDL_i in place
+            c_LDL_i[j, i] = ci_n[j, i] + dt * (p.Di * laplacian - p.r_ox * ci_n[j, i])
 
 
 
