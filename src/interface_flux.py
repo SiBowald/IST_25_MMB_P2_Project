@@ -1,4 +1,3 @@
-# NEW: split from original script into a module
 
 import params as p
 

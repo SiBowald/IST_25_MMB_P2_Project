@@ -84,19 +84,14 @@ for n in range(Nt):       # n indexes the t
     M_n = M.copy()             # macrophages intima
     F_n = F.copy()             # foam cells intima
 
-    # NEW: lumen step moved to pde_lumen.py
     step_lumen_ldl(c_LDL_l, cl_n, dt, y1, hx, hy1)
 
-    # NEW: intima step moved to pde_intima.py
     step_intima_ldl_and_reactions(c_LDL_i, c_oxLDL_i, M, F, ci_n, cox_n, M_n, dt, hx, hy2)
 
-    # NEW: interface coupling moved to interface_flux.py
     apply_interface_flux(c_LDL_l, c_LDL_i, cl_n, ci_n, dt, hy1, hy2)
 
-    # NEW: intima boundaries moved to pde_intima.py
     apply_intima_boundaries(c_LDL_i)
 
-    # NEW: plotting moved to plotting.py
     maybe_plot(n, dt, x, y1, y2, c_LDL_i, c_LDL_l)
 
 plt.show()

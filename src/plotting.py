@@ -1,4 +1,3 @@
-# NEW: split from original script into a module
 
 import numpy as np
 import matplotlib.pyplot as plt

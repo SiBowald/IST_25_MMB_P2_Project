@@ -1,5 +1,3 @@
-# NEW: split from original script into a module
-
 #!/usr/bin/env python
 # coding: utf-8
 
