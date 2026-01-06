@@ -21,7 +21,6 @@ from plotting import maybe_plot
 # In[96]:
 
 
-# NEW: grid moved to grid.py
 x, y1, y2, hx, hy1, hy2 = build_grid()
 
 
