@@ -29,7 +29,7 @@ def step_lumen_ldl(c_LDL_l, cl_n, dt, y1, hx, hy1):
     # Bottom boundary lumen is the interface with the top boundary intima, so not external!
 
     # Left boundary: inlet (x=0), using FD
-    c_LDL_l[:, 0] = c_LDL_l[:, 1]  # c_LDL_l[:,0] = c_LDL_l[:,1]
+    c_LDL_l[:, 0] = p.Cl_in  # c_LDL_l[:,0] = c_LDL_l[:,1]
 
     # Right boundary: outlet (x=Lx), using BD
     c_LDL_l[:, -1] = c_LDL_l[:, -2]  # c_LDL_l[:,Nx] = c_LDL_l[:,Nx-1]

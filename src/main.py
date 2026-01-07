@@ -69,6 +69,12 @@ Nt = int(T / dt)
 
 print(f"dt = {dt:.2e}, Nt = {Nt}")
 
+# NEW: debug print for interface coupling strength
+from velocity import wall_shear_stress_endothelium
+from interface_flux import xi_from_shear
+sigma = wall_shear_stress_endothelium()
+print(f"|sigma_end| = {abs(sigma):.3e}, xi = {xi_from_shear(abs(sigma)):.3e}")
+
 
 # In[109]:
 

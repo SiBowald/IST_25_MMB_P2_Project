@@ -31,6 +31,8 @@ kappa = 8.7e-13      # [cm^2] permeability CHECKKKKK
 mu = 0.03655     # [g/(cm s)] viscosity
 Di = 1.20e-7     # [cm^2/s] LDL diffusion in intima
 p_med = 800.0    # [mmHg] medial pressure
+# NEW
+perstand = 1.07e-11   # [cm/s] endothelial permeability scale used in xi(sigma) from the reference
 
 # Inflammation
 d_ox = 1.0e-3    # [cm^2/s] ox-LDL diffusion

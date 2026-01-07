@@ -54,3 +54,15 @@ def velocity_lumen(y):
     # -> Quadratic is 0 at v1(Ly2) and v1(Ly2 + Ly1)
     # -> Gives (y - Ly2) and (y - (Ly2 + Ly1))
     return (4.0 * p.Ul_max * (y - p.Ly2) * (p.Ly2 + p.Ly1 - y)) / (p.Ly1**2)
+
+# NEW: derivative of the prescribed lumen velocity profile
+def d_velocity_lumen_dy(y):
+    # derivative of:
+    # v(y) = (4*Ul_max*(y-Ly2)*(Ly2+Ly1-y))/Ly1^2
+    return (4.0 * p.Ul_max * (2.0 * p.Ly2 + p.Ly1 - 2.0 * y)) / (p.Ly1**2)
+
+
+# NEW: wall shear stress magnitude at the endothelium (bottom wall of lumen, y = Ly2)
+def wall_shear_stress_endothelium():
+    yb = p.Ly2
+    return p.nu * abs(d_velocity_lumen_dy(yb))
