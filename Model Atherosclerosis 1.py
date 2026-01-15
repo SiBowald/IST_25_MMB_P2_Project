@@ -94,7 +94,7 @@ wsstand  = 4.0 * nu * Ul_max / Ly1   # baseline/reference WSS
 # --- Gaussian bump parameters ---
 x0 = 0.55 * Lx      # center of the bump [cm]
 w  = 0.25           # width (std dev) [cm]
-peak_factor = 20.55  # +55% peak (so peak ~ 1.55*baseline)
+peak_factor = 20.55  # +2055% peak (so peak ~ 21.55*baseline) //0.55 -> +55% peak (so peak ~ 1.55*baseline)
 
 # local max velocity profile along x
 bump = 1.0 + peak_factor * np.exp(-0.5 * ((x - x0) / w) ** 2)
