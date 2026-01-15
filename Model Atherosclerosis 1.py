@@ -41,6 +41,10 @@ r_ox = 0.5       # [1/s] LDL oxidation rate
 labda = 10.0     # [1/s] cytokine degradation
 gamma = 1.0      # [1/s] cytokine production
 
+cox_th = 0.01
+
+
+
 
 # In[96]:
 
@@ -81,6 +85,38 @@ c_LDL_i = np.zeros((Ny2, Nx))     # LDL concentration intima
 c_oxLDL_i =np.zeros((Ny2, Nx))     # ox-LDL concentration intima
 M = np.zeros((Ny2, Nx))           # macrophages (conc?????)
 F = np.zeros((Ny2, Nx))            # foam cells (conc?????)
+S = np.zeros((Ny2, Nx))            #
+
+# Wall Shear Stress + Permeability (single Gaussian bump in x)
+perstand = 1.07e-11
+wsstand  = 4.0 * nu * Ul_max / Ly1   # baseline/reference WSS
+
+# --- Gaussian bump parameters ---
+x0 = 0.55 * Lx      # center of the bump [cm]
+w  = 0.25           # width (std dev) [cm]
+peak_factor = 20.55  # +55% peak (so peak ~ 1.55*baseline)
+
+# local max velocity profile along x
+bump = 1.0 + peak_factor * np.exp(-0.5 * ((x - x0) / w) ** 2)
+Ul_max_x = Ul_max * bump
+
+# local wall shear stress tau_w(x) from Poiseuille in a flat channel
+du_dy_x = 4.0 * Ul_max_x / Ly1
+tau_w_x = nu * np.abs(du_dy_x)
+
+# formula permeability in paper
+xi = (perstand / np.log(2)) * np.log(1.0 + 2.0 * wsstand / (tau_w_x + wsstand))
+# xi is now shape (Nx,) and varies with x
+
+lam = 1  # I don't know if this is correct.
+
+plt.figure()
+plt.plot(x, tau_w_x)
+plt.title("Wall shear stress |tau_w(x)| (single Gaussian bump)")
+plt.xlabel("x [cm]")
+plt.ylabel("|tau_w| [g/(cm*s^2)]")
+plt.grid(True)
+plt.show()
 
 
 # In[102]:
@@ -112,6 +148,9 @@ T  = 0.1
 Nt = int(T / dt)
 
 print(f"dt = {dt:.2e}, Nt = {Nt}")
+
+
+
 
 
 # #### Velocity field in the lumen (Domain 1)
@@ -172,31 +211,34 @@ def velocity_lumen(y):
 
 
 ### Time loop ###
-for n in range(Nt):       # n indexes the t 
+for n in range(Nt):  # n indexes the t
+
 
     # Copy so derivatives are computed from the old time level
-    cl_n = c_LDL_l.copy()      # LDL lumen
-    ci_n = c_LDL_i.copy()      # LDL intima
-    cox_n = c_oxLDL_i.copy()         # ox-LDL intima
-    M_n = M.copy()             # macrophages intima
-    F_n = F.copy()             # foam cells intima
+    cl_n = c_LDL_l.copy()  # LDL lumen
+    ci_n = c_LDL_i.copy()  # LDL intima
+    cox_n = c_oxLDL_i.copy()  # ox-LDL intima
+    M_n = M.copy()  # macrophages intima
+    F_n = F.copy()  # foam cells intima
+    S_n = S.copy()
 
     # Lumen: LDL transport (FD-BD-CD)
-    # PDE: 
+    # PDE:
     # Diffusion: CD, advection: BD, time: FD
-    for j in range(1, Ny1 - 1):        # j indexes the y-direction
-        
-        vx = velocity_lumen(y1[j])     # velocity depends only on y 
-        
-        for i in range(1, Nx - 1):     # i indexes the x-direction
+    for j in range(1, Ny1 - 1):  # j indexes the y-direction
+
+        vx = velocity_lumen(y1[j])  # velocity depends only on y
+
+        for i in range(1, Nx - 1):  # i indexes the x-direction
             # Note that x and y are the otherway around here!!!! So that's why j is first and i second!!
-            
+
             # Diffusion term
             # 2D Laplacian using CD (central differences) in x and y
-            laplacian = (cl_n[j, i+1] - 2 * cl_n[j, i] + cl_n[j, i-1]) / hx**2 + (cl_n[j+1, i] - 2 * cl_n[j, i] + cl_n[j-1, i]) / hy1**2
+            laplacian = (cl_n[j, i + 1] - 2 * cl_n[j, i] + cl_n[j, i - 1]) / hx * 2 + (
+                        cl_n[j + 1, i] - 2 * cl_n[j, i] + cl_n[j - 1, i]) / hy1 * 2
 
             # Advection term using BD (backward difference), bc vx > 0
-            advection = -vx * (cl_n[j, i] - cl_n[j, i-1]) / hx
+            advection = -vx * (cl_n[j, i] - cl_n[j, i - 1]) / hx
 
             # Time update using FD (forward difference)
             c_LDL_l[j, i] = cl_n[j, i] + dt * (Dl * laplacian + advection)
@@ -205,59 +247,95 @@ for n in range(Nt):       # n indexes the t
     # Bottom boundary lumen is the interface with the top boundary intima, so not external!
 
     # Left boundary: inlet (x=0), using FD
-    c_LDL_l[:, 0] = c_LDL_l[:, 1] # c_LDL_l[:,0] = c_LDL_l[:,1]
+    c_LDL_l[:, 0] = c_LDL_l[:, 1]  # c_LDL_l[:,0] = c_LDL_l[:,1]
 
     # Right boundary: outlet (x=Lx), using BD
-    c_LDL_l[:, -1] = c_LDL_l[:, -2] # c_LDL_l[:,Nx] = c_LDL_l[:,Nx-1]
+    c_LDL_l[:, -1] = c_LDL_l[:, -2]  # c_LDL_l[:,Nx] = c_LDL_l[:,Nx-1]
 
     # Top boundary: arterial wall (y=Ly2+Ly1), using BD
-    c_LDL_l[-1, :] = c_LDL_l[-2, :] # c_LDL_l[Ny,:] = c_LDL_l[Ny-1,:]
+    c_LDL_l[-1, :] = c_LDL_l[-2, :]  # c_LDL_l[Ny,:] = c_LDL_l[Ny-1,:]
 
-    for j in range(1, Ny2-1):
-        for i in range(1, Nx-1):
+    # Intima LDL
+    for j in range(1, Ny2 - 1):
+        for i in range(1, Nx - 1):
+            # 2D CD approximation of diffusion LDL
+            laplacian = (ci_n[j, i + 1] - 2 * ci_n[j, i] + ci_n[j, i - 1]) / hx * 2 + (
+                        ci_n[j + 1, i] - 2 * ci_n[j, i] + ci_n[j - 1, i]) / hy2 * 2
 
-            laplacian = (ci_n[j,i+1] - 2 * ci_n[j,i] + ci_n[j, i-1]) / hx**2 + (ci_n[j+1, i] - 2 * ci_n[j, i] + ci_n[j-1, i]) / hy2**2
-
-            c_LDL_i[j, i] + dt * (Di * laplacian - r_ox * ci_n[j, i])
-
-
-
-    # ODEs for inflammation reactions
-    c_oxLDL_i += dt * (r_ox * ci_n - kF * cox_n * M_n)
-    M   += dt * (-kF * cox_n * M_n)
-    F   += dt * (kF * cox_n * M_n)
-
-    # Interface coupling (Kedem-Katchalsky law)
-    for i in range(1, Nx-1):
-        flux = kappa * (cl_n[0, i] - ci_n[-1, i])
-
-        c_LDL_l[0,i]  -= dt * flux / hy1   # lumen loses LDL
-        c_LDL_i[-1,i] += dt * flux / hy2   # intima gains LDL
-
+            # FD for time update LDL
+            c_LDL_i[j, i] = ci_n[j, i] + dt * (Di * laplacian - r_ox * ci_n[j, i])
 
     ### External boundaries (no flux) intima ###
     ## LDL intima
     # Left boundary (x=0), using FD
-    c_LDL_i[:, 0] = c_LDL_i[:, 1] # c_LDL_i[:,0] = c_LDL_i[:,1]
+    c_LDL_i[:, 0] = c_LDL_i[:, 1]  # c_LDL_i[:,0] = c_LDL_i[:,1]
 
     # Right boundary (x=Lx), using BD
-    c_LDL_i[:, -1] = c_LDL_i[:, -2] # c_LDL_i[:,Nx] = c_LDL_i[:,Nx-1]
+    c_LDL_i[:, -1] = c_LDL_i[:, -2]  # c_LDL_i[:,Nx] = c_LDL_i[:,Nx-1]
 
     # Bottom boundary: media (y=0), using FD
-    c_LDL_i[0, :] = c_LDL_i[1, :] # c_LDL_i[0,:] = c_LDL_li[1,:]
-    
-    # Visualization
-    if n % 50 == 0:
-        y_all = np.concatenate((y2, y1[1:]))
-        u_all = np.vstack((c_LDL_i, c_LDL_l[1:,:]))
+    c_LDL_i[0, :] = c_LDL_i[1, :]  # c_LDL_i[0,:] = c_LDL_li[1,:]
 
-        X, Y = np.meshgrid(x, y_all)
+    for i in range(1, Nx - 1):
+        flux = xi[i] * (cl_n[0, i] - ci_n[-1, i])
+
+        # lumen loses LDL
+        c_LDL_l[0, i] -= dt * flux / hy1
+
+        # intima gains LDL
+        c_LDL_i[-1, i] += dt * flux / hy2
+
+    # Oxidized LDL
+    for j in range(1, Ny2 - 1):
+        for i in range(1, Nx - 1):
+            # 2D CD approximation of diffusion oxLDL (same diffusion operator as LDL!!)
+            lap = (cox_n[j, i + 1] - 2 * cox_n[j, i] + cox_n[j, i - 1]) / hx * 2 + (
+                        cox_n[j + 1, i] - 2 * cox_n[j, i] + cox_n[j - 1, i]) / hy2 * 2
+
+            # FD for time update oxLDL
+            c_oxLDL_i[j, i] = cox_n[j, i] + dt * (d_ox * lap - kF * cox_n[j, i] * M_n[j, i] + r_ox * ci_n[j, i])
+            # - consumption by macrophages + production from LDL
+
+    # Macrophages
+    for j in range(1, Ny2 - 1):
+        for i in range(1, Nx - 1):
+            # 2D CD approximation of diffusion macrophages (macrophages go through tissue and diffusion is simplest correct model)
+            lap = (M_n[j, i + 1] - 2 * M_n[j, i] + M_n[j, i - 1]) / hx * 2 + (
+                        M_n[j + 1, i] - 2 * M_n[j, i] + M_n[j - 1, i]) / hy2 * 2
+
+            # Time step update macrophages: current conc. + diffusion - transformed into foam cells
+            M[j, i] = M_n[j, i] + dt * (
+                        dM * lap - kF * cox_n[j, i] * M_n[j, i])  # reaction removes macrophages if there is ox_LDL
+
+    # Cytokines
+    for j in range(1, Ny2 - 1):
+        for i in range(1, Nx - 1):
+            # 2D Laplacian CD (also diffusion used to describe movement cytokines, bc no better option)
+            lap = (S_n[j, i + 1] - 2 * S_n[j, i] + S_n[j, i - 1]) / hx * 2 + (
+                        S_n[j + 1, i] - 2 * S_n[j, i] + S_n[j - 1, i]) / hy2 * 2
+
+            # Threshold, so cytokines are only produced if cox > cox_th, bc low ox-LDL does not trigger inflammation
+            source = gamma * max(cox_n[j, i] - cox_th, 0.0) + kF * cox_n[j, i] * M_n[j, i]
+
+            # Time step update cytokines: current conc. + diffusion - death rate + cytokine production (by inflammation and/or macrophage uptake)
+            S[j, i] = S_n[j, i] + dt * (dS * lap - lam * S_n[j, i] + source)
+
+    # Foam cells
+    F += dt * (kF * cox_n * M_n)
+
+    # Visualization
+    if n % max(Nt // 10, 1) == 0:
+        # Mesh for intima only
+        X_i, Y_i = np.meshgrid(x, y2)
 
         plt.clf()
-        plt.contourf(X, Y, u_all, 30)
-        plt.colorbar(label="LDL concentration")
+        plt.contourf(X_i, Y_i, np.log10(c_oxLDL_i + 1e-25), 30)
+        plt.colorbar(label="log10(oxLDL)")
+
+        # Interface line (lumen–intima)
         plt.plot([0, Lx], [Ly2, Ly2], 'k--', linewidth=1)
-        plt.title(f"t = {n*dt:.3e} s")
+
+        plt.title(f"oxLDL in intima at t = {n * dt:.3e} s")
         plt.xlabel("x")
         plt.ylabel("y")
         plt.pause(0.01)
